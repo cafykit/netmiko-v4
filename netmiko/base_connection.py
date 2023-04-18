@@ -1312,10 +1312,38 @@ A paramiko SSHException occurred during connection creation:
             except ReadTimeout:
                 pass
         else:
+        
             # Initial read
             time.sleep(sleep_time)
-            prompt = self.read_channel().strip()
+            vxr_pattern = "last login"
+            autocommand_pattern = "executing autocommand"
+            cxr_pattern = "last switch-over"
 
+            start_time = time.time()
+            current_time = time.time()
+            # Keep reading data until prompt is found or session is alive or read_timeout is reached
+            while current_time - start_time < self.read_timeout and self.remote_conn.closed == False:
+                prompt = self.read_channel().strip()
+
+                if prompt:
+                    log.info("Prompt found. Time Waited: {}. Prompt found is: {}.".format(current_time - start_time, prompt))
+                    if autocommand_pattern in prompt.lower() or cxr_pattern in prompt.lower():
+                        log.info("Pattern found in Prompt. Will retry.")
+                        time.sleep((delay_factor * 0.1) + 5)
+                        prompt = self.read_channel()
+                    else:
+                        break
+                else:
+                    log.info("Prompt not found. Time Waited: {}".format(current_time - start_time))
+                    if sleep_time <= 3:
+                        # Double the sleep_time when it is small
+                        sleep_time *= 2
+                    else:
+                        sleep_time += 1
+                    time.sleep(sleep_time)
+                    
+                current_time = time.time()
+            """
             count = 0
             while count <= 12 and not prompt:
                 if not prompt:
@@ -1338,6 +1366,7 @@ A paramiko SSHException occurred during connection creation:
                     else:
                         sleep_time += 1
                 count += 1
+            """
 
         # If multiple lines in the output take the last line
         prompt = prompt.split(self.RESPONSE_RETURN)[-1]
