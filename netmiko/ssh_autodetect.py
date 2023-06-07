@@ -236,7 +236,7 @@ SSH_MAPPER_DICT = {
     },
     "fortinet": {
         "cmd": "get system status",
-        "search_patterns": [r"FortiOS"],
+        "search_patterns": [r"FortiOS", r"FortiGate"],
         "priority": 99,
         "dispatch": "_autodetect_std",
     },
@@ -249,6 +249,12 @@ SSH_MAPPER_DICT = {
     "supermicro_smis": {
         "cmd": "show system info",
         "search_patterns": [r"Super Micro Computer"],
+        "priority": 99,
+        "dispatch": "_autodetect_std",
+    },
+    "flexvnf": {
+        "cmd": "show system package-info",
+        "search_patterns": [r"Versa FlexVNF"],
         "priority": 99,
         "dispatch": "_autodetect_std",
     },

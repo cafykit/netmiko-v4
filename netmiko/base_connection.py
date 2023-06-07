@@ -16,6 +16,7 @@ from typing import (
     cast,
     Type,
     Sequence,
+    Iterator,
     TextIO,
     Union,
     Tuple,
@@ -30,9 +31,11 @@ import telnetlib
 import time
 from collections import deque
 from os import path
+from pathlib import Path
 from threading import Lock
 import functools
 import logging
+import itertools
 
 import paramiko
 import serial
@@ -182,7 +185,7 @@ class BaseConnection:
         session_log_record_writes: bool = False,
         session_log_file_mode: str = "write",
         allow_auto_change: bool = False,
-        encoding: str = "ascii",
+        encoding: str = "utf-8",
         sock: Optional[socket.socket] = None,
         auto_connect: bool = True,
         delay_factor_compat: bool = False,
@@ -428,6 +431,8 @@ class BaseConnection:
             self.key_file = (
                 path.abspath(path.expanduser(key_file)) if key_file else None
             )
+            if self.use_keys is True:
+                self._key_check()
             self.pkey = pkey
             self.passphrase = passphrase
             self.allow_agent = allow_agent
@@ -514,6 +519,22 @@ class BaseConnection:
 
     def _return_cli(self) -> str:
         raise NotImplementedError
+
+    def _key_check(self) -> bool:
+        """Verify key_file exists."""
+        msg = f"""
+use_keys has been set to True, but specified key_file does not exist:
+
+use_keys: {self.use_keys}
+key_file: {self.key_file}
+"""
+        if self.key_file is None:
+            raise ValueError(msg)
+
+        my_key_file = Path(self.key_file)
+        if not my_key_file.is_file():
+            raise ValueError(msg)
+        return True
 
     @lock_channel
     @log_writes
@@ -638,7 +659,7 @@ where x is the total number of seconds to wait before timing out.\n"""
                 results = re.split(pattern, output, maxsplit=1, flags=re_flags)
 
                 # The string matched by pattern must be retained in the output string.
-                # re.split will do this if capturing parentesis are used.
+                # re.split will do this if capturing parenthesis are used.
                 if len(results) == 2:
                     # no capturing parenthesis, convert and try again.
                     pattern = f"({pattern})"
@@ -892,7 +913,7 @@ You can look at the Netmiko session_log or debug log for more information.
         self.remote_conn.close()
         raise NetmikoAuthenticationException(msg)
 
-    def _try_session_preparation(self) -> None:
+    def _try_session_preparation(self, force_data: bool = True) -> None:
         """
         In case of an exception happening during `session_preparation()` Netmiko should
         gracefully clean-up after itself. This might be challenging for library users
@@ -900,6 +921,10 @@ You can look at the Netmiko session_log or debug log for more information.
         to threads used in Paramiko.
         """
         try:
+            # Netmiko needs there to be data for session_preparation to work.
+            if force_data:
+                self.write_channel(self.RETURN)
+                time.sleep(0.1)
             self.session_preparation()
         except Exception:
             self.disconnect()
@@ -1146,7 +1171,7 @@ A paramiko SSHException occurred during connection creation:
         time.sleep(main_delay * 10)
         new_data = ""
         while i <= count:
-            new_data += self.read_channel_timing()
+            new_data += self.read_channel_timing(read_timeout=20)
             if new_data:
                 return new_data
 
@@ -1309,8 +1334,13 @@ A paramiko SSHException occurred during connection creation:
 
         if not prompt[-1] in (pri_prompt_terminator, alt_prompt_terminator):
             raise ValueError(f"Router prompt not found: {repr(prompt)}")
-        # Strip off trailing terminator
-        self.base_prompt = prompt[:-1]
+
+        # If all we have is the 'terminator' just use that :-(
+        if len(prompt) == 1:
+            self.base_prompt = prompt
+        else:
+            # Strip off trailing terminator
+            self.base_prompt = prompt[:-1]
         return self.base_prompt
 
     def find_prompt(
@@ -1329,10 +1359,7 @@ A paramiko SSHException occurred during connection creation:
         self.write_channel(self.RETURN)
 
         if pattern:
-            try:
-                prompt = self.read_until_pattern(pattern=pattern)
-            except ReadTimeout:
-                pass
+            prompt = self.read_until_pattern(pattern=pattern)
         else:
             # Initial read
             time.sleep(sleep_time)
@@ -1971,7 +1998,9 @@ You can also look at the Netmiko session_log for more information.
                 raise ValueError("Failed to exit enable mode.")
         return output
 
-    def check_config_mode(self, check_string: str = "", pattern: str = "") -> bool:
+    def check_config_mode(
+        self, check_string: str = "", pattern: str = "", force_regex: bool = False
+    ) -> bool:
         """Checks if the device is in configuration mode or not.
 
         :param check_string: Identification of configuration mode from the device
@@ -1983,10 +2012,14 @@ You can also look at the Netmiko session_log for more information.
         self.write_channel(self.RETURN)
         # You can encounter an issue here (on router name changes) prefer delay-based solution
         if not pattern:
-            output = self.read_channel_timing()
+            output = self.read_channel_timing(read_timeout=10.0)
         else:
             output = self.read_until_pattern(pattern=pattern)
-        return check_string in output
+
+        if force_regex:
+            return bool(re.search(check_string, output))
+        else:
+            return check_string in output
 
     def config_mode(
         self, config_command: str = "", pattern: str = "", re_flags: int = 0
@@ -2065,7 +2098,7 @@ You can also look at the Netmiko session_log for more information.
 
     def send_config_set(
         self,
-        config_commands: Union[str, Sequence[str], TextIO, None] = None,
+        config_commands: Union[str, Sequence[str], Iterator[str], TextIO, None] = None,
         *,
         exit_config_mode: bool = True,
         read_timeout: Optional[float] = None,
@@ -2162,8 +2195,10 @@ You can also look at the Netmiko session_log for more information.
         # Set bypass_commands="" to force no-bypass (usually for testing)
         bypass_detected = False
         if bypass_commands:
+            # Make a copy of the iterator
+            config_commands, config_commands_tmp = itertools.tee(config_commands, 2)
             bypass_detected = any(
-                [True for cmd in config_commands if re.search(bypass_commands, cmd)]
+                [True for cmd in config_commands_tmp if re.search(bypass_commands, cmd)]
             )
         if bypass_detected:
             cmd_verify = False
@@ -2354,6 +2389,11 @@ You can also look at the Netmiko session_log for more information.
         """Try to gracefully close the session."""
         try:
             self.cleanup()
+        except Exception:
+            # Keep going on cleanup process even if exceptions
+            pass
+
+        try:
             if self.protocol == "ssh":
                 self.paramiko_cleanup()
             elif self.protocol == "telnet":

@@ -1,4 +1,4 @@
-from typing import Optional, Union, Sequence, TextIO, Any
+from typing import Optional, Union, Sequence, Iterator, TextIO, Any
 import time
 import warnings
 import re
@@ -20,7 +20,9 @@ class VyOSSSH(NoEnable, CiscoSSHConnection):
         time.sleep(0.3 * self.global_delay_factor)
         self.clear_buffer()
 
-    def check_config_mode(self, check_string: str = "#", pattern: str = "") -> bool:
+    def check_config_mode(
+        self, check_string: str = "#", pattern: str = "", force_regex: bool = False
+    ) -> bool:
         """Checks if the device is in configuration mode"""
         return super().check_config_mode(check_string=check_string, pattern=pattern)
 
@@ -121,7 +123,7 @@ class VyOSSSH(NoEnable, CiscoSSHConnection):
 
     def send_config_set(
         self,
-        config_commands: Union[str, Sequence[str], TextIO, None] = None,
+        config_commands: Union[str, Sequence[str], Iterator[str], TextIO, None] = None,
         exit_config_mode: bool = False,
         **kwargs: Any,
     ) -> str:
@@ -131,10 +133,12 @@ class VyOSSSH(NoEnable, CiscoSSHConnection):
         )
 
     def save_config(
-        self,
-        cmd: str = "copy running-config startup-config",
-        confirm: bool = False,
-        confirm_response: str = "",
+        self, cmd: str = "save", confirm: bool = False, confirm_response: str = ""
     ) -> str:
-        """Not Implemented"""
-        raise NotImplementedError
+        """Saves Config."""
+        output = super().save_config(
+            cmd=cmd, confirm=confirm, confirm_response=confirm_response
+        )
+        if "Done" not in output:
+            raise ValueError(f"Save failed with following errors:\n\n{output}")
+        return output

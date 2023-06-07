@@ -1,4 +1,4 @@
-from typing import Optional, Any, Union, Sequence, TextIO
+from typing import Optional, Any, Union, Sequence, Iterator, TextIO
 import re
 import warnings
 from netmiko.base_connection import DELAY_FACTOR_DEPR_SIMPLE_MSG
@@ -24,9 +24,30 @@ class CiscoXrBase(CiscoBaseConnection):
         self._test_channel_read(pattern=r"[>#]")
         self.set_base_prompt()
 
+    def set_base_prompt(
+        self,
+        pri_prompt_terminator: str = "#",
+        alt_prompt_terminator: str = ">",
+        delay_factor: float = 1.0,
+        pattern: Optional[str] = None,
+    ) -> str:
+        """
+        Cisco IOS-XR abbreviates the prompt at 31-chars in config mode.
+
+        Consequently, abbreviate the base_prompt
+        """
+        base_prompt = super().set_base_prompt(
+            pri_prompt_terminator=pri_prompt_terminator,
+            alt_prompt_terminator=alt_prompt_terminator,
+            delay_factor=delay_factor,
+            pattern=pattern,
+        )
+        self.base_prompt = base_prompt[:31]
+        return self.base_prompt
+
     def send_config_set(
         self,
-        config_commands: Union[str, Sequence[str], TextIO, None] = None,
+        config_commands: Union[str, Sequence[str], Iterator[str], TextIO, None] = None,
         exit_config_mode: bool = False,
         **kwargs: Any,
     ) -> str:
@@ -228,7 +249,10 @@ class CiscoXrBase(CiscoBaseConnection):
         return output
 
     def check_config_mode(
-        self, check_string: str = ")#", pattern: str = r"[#\$]"
+        self,
+        check_string: str = ")#",
+        pattern: str = r"[#\$]",
+        force_regex: bool = False,
     ) -> bool:
         """Checks if the device is in configuration mode or not.
 

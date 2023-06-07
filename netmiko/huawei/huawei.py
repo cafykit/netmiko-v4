@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Optional, Any, Union, Sequence, Iterator, TextIO
 import time
 import re
 import warnings
@@ -14,7 +14,7 @@ class HuaweiBase(NoEnable, CiscoBaseConnection):
     def session_preparation(self) -> None:
         """Prepare the session after the connection has been established."""
         self.ansi_escape_codes = True
-        self._test_channel_read(pattern=r"[>\]]")
+        # The _test_channel_read happens in special_login_handler()
         self.set_base_prompt()
         self.disable_paging(command="screen-length 0 temporary")
 
@@ -46,7 +46,9 @@ class HuaweiBase(NoEnable, CiscoBaseConnection):
         """Exit configuration mode."""
         return super().exit_config_mode(exit_config=exit_config, pattern=pattern)
 
-    def check_config_mode(self, check_string: str = "]", pattern: str = "") -> bool:
+    def check_config_mode(
+        self, check_string: str = "]", pattern: str = "", force_regex: bool = False
+    ) -> bool:
         """Checks whether in configuration mode. Returns a boolean."""
         return super().check_config_mode(check_string=check_string)
 
@@ -93,20 +95,22 @@ class HuaweiBase(NoEnable, CiscoBaseConnection):
             cmd=cmd, confirm=confirm, confirm_response=confirm_response
         )
 
+    def cleanup(self, command: str = "quit") -> None:
+        return super().cleanup(command=command)
+
 
 class HuaweiSSH(HuaweiBase):
     """Huawei SSH driver."""
 
     def special_login_handler(self, delay_factor: float = 1.0) -> None:
-        """Handle password change request by ignoring it"""
-
-        # Huawei can prompt for password change. Search for that or for normal prompt
-        password_change_prompt = r"((Change now|Please choose))|([\]>]\s*$)"
-        output = self.read_until_pattern(password_change_prompt)
-        if re.search(password_change_prompt, output):
-            self.write_channel("N\n")
-            self.clear_buffer()
-        return None
+        # Huawei prompts for password change before displaying the initial base prompt.
+        # Search for that password change prompt or for base prompt.
+        password_change_prompt = r"(Change now|Please choose)"
+        prompt_or_password_change = r"(?:Change now|Please choose|[>\]])"
+        data = self.read_until_pattern(pattern=prompt_or_password_change)
+        if re.search(password_change_prompt, data):
+            self.write_channel("N" + self.RETURN)
+            self.read_until_pattern(pattern=r"[>\]]")
 
 
 class HuaweiTelnet(HuaweiBase):
@@ -190,6 +194,17 @@ class HuaweiTelnet(HuaweiBase):
 
 
 class HuaweiVrpv8SSH(HuaweiSSH):
+    def send_config_set(
+        self,
+        config_commands: Union[str, Sequence[str], Iterator[str], TextIO, None] = None,
+        exit_config_mode: bool = False,
+        **kwargs: Any,
+    ) -> str:
+        """Huawei VRPv8 requires you not exit from configuration mode."""
+        return super().send_config_set(
+            config_commands=config_commands, exit_config_mode=exit_config_mode, **kwargs
+        )
+
     def commit(
         self,
         comment: str = "",
