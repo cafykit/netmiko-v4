@@ -51,6 +51,7 @@ from netmiko.exceptions import (
     ReadException,
     ReadTimeout,
 )
+from netmiko.cafy_custom_exceptions import SessionDownException, PromptNotFoundException, PatternNotFoundException
 from netmiko.channel import Channel, SSHChannel, TelnetChannel, SerialChannel
 from netmiko.session_log import SessionLog
 from netmiko.utilities import (
@@ -69,12 +70,10 @@ if TYPE_CHECKING:
 # For decorators
 F = TypeVar("F", bound=Callable[..., Any])
 
-
 DELAY_FACTOR_DEPR_SIMPLE_MSG = """\n
 Netmiko 4.x and later has deprecated the use of delay_factor and/or
 max_loops in this context. You should remove any use of delay_factor=x
 from this method call.\n"""
-
 
 # Logging filter for #2597
 class SecretsFilter(logging.Filter):
@@ -88,6 +87,13 @@ class SecretsFilter(logging.Filter):
                 record.msg = record.msg.replace(hidden_data, "********")
         return True
 
+class ContextAdapter(logging.LoggerAdapter):
+    '''
+    Custom cafy function to add device_name (whose value is router_name, ip, port) 
+    in all netmiko log messages
+    '''
+    def process(self, msg, kwargs):
+        return '[%s] %s' % (self.extra['device_name'], msg), kwargs
 
 def lock_channel(func: F) -> F:
     @functools.wraps(func)
@@ -110,7 +116,7 @@ def log_writes(func: F) -> F:
     def wrapper_decorator(self: "BaseConnection", out_data: str) -> None:
         func(self, out_data)
         try:
-            log.debug(
+            self.log.debug(
                 "write_channel: {}".format(
                     str(write_bytes(out_data, encoding=self.encoding))
                 )
@@ -183,6 +189,8 @@ class BaseConnection:
         sock: Optional[socket.socket] = None,
         auto_connect: bool = True,
         delay_factor_compat: bool = False,
+        max_read_timeout: Optional[int] = None,
+        device_name=None
     ) -> None:
         """
         Initialize attributes for establishing connection to target device.
@@ -344,6 +352,7 @@ class BaseConnection:
             self.global_delay_factor = 0.1
         self.session_log = None
         self._session_log_close = False
+        self.device_name = device_name        
 
         # prevent logging secret data
         no_log = {}
@@ -352,6 +361,7 @@ class BaseConnection:
         if self.secret:
             no_log["secret"] = self.secret
         log.addFilter(SecretsFilter(no_log=no_log))
+        self.log = ContextAdapter(log, {'device_name': self.device_name })
 
         # Netmiko will close the session_log if we open the file
         if session_log is not None:
@@ -572,6 +582,19 @@ key_file: {self.key_file}
                 # If unable to send, we can tell for sure that the connection is unusable
                 return False
         return False
+    
+    def is_session_closed(self) -> bool:
+        """
+        Returns a boolean flag with the state of the connection
+        this is a cafy custom function needed because in cisco_vxr_Ssh code uses self.remote_conn.closed
+        attribute to check connection status. However the 'closed' attriubute is present on remote_conn object only if protocol is ssh
+        and not telnet. Therefore to handle telnet remote_Conn, this function is created a wrapper
+        """
+        if self.protocol == "telnet":
+            return not self.is_alive()
+        else:
+            return self.remote_conn.closed
+        
 
     @lock_channel
     def read_channel(self) -> str:
@@ -580,7 +603,7 @@ key_file: {self.key_file}
         new_data = self.normalize_linefeeds(new_data)
         if self.ansi_escape_codes:
             new_data = self.strip_ansi_escape_codes(new_data)
-        log.debug(f"read_channel: {new_data}")
+        self.log.debug(f"read_channel: {new_data}")
         if self.session_log:
             self.session_log.write(new_data)
 
@@ -630,7 +653,7 @@ where x is the total number of seconds to wait before timing out.\n"""
         loop_delay = 0.01
         start_time = time.time()
         # if read_timeout == 0 or 0.0 keep reading indefinitely
-        while (time.time() - start_time < read_timeout) or (not read_timeout):
+        while (time.time() - start_time < read_timeout) or (not read_timeout) and self.is_session_closed()==False:
             output += self.read_channel()
             if re.search(pattern, output, flags=re_flags):
                 results = re.split(pattern, output, maxsplit=1, flags=re_flags)
@@ -649,7 +672,7 @@ pattern={pattern}
 output={repr(output)}
 results={results}
 """
-                    raise ReadException(msg)
+                    raise PatternNotFoundException(msg)
 
                 # Process such that everything before and including pattern is return.
                 # Everything else is retained in the _read_buffer
@@ -657,19 +680,20 @@ results={results}
                 output = output + match_str
                 if buffer:
                     self._read_buffer += buffer
-                log.debug(f"Pattern found: {pattern} {output}")
+                self.log.debug(f"Pattern found: {pattern} in output: {output}")
                 return output
             time.sleep(loop_delay)
 
+        if self.is_session_closed():
+                msg = f"Session went down while checking for pattern. Search pattern: {repr(pattern)}"
+                log.error(msg)
+                raise SessionDownException(msg)
+
         msg = f"""\n\nPattern not detected: {repr(pattern)} in output.
-
-Things you might try to fix this:
-1. Adjust the regex pattern to better identify the terminating string. Note, in
-many situations the pattern is automatically based on the network device's prompt.
-2. Increase the read_timeout to a larger value.
-
-You can also look at the Netmiko session_log or debug log for more information.\n\n"""
-        raise ReadTimeout(msg)
+Output: {repr(output)}
+Read_Timeout: {read_timeout}
+You can also look at the Netmiko session_log  for more information.\n\n"""
+        raise PatternNotFoundException(msg)
 
     def read_channel_timing(
         self,
@@ -1213,8 +1237,8 @@ A paramiko SSHException occurred during connection creation:
             warnings.warn(DELAY_FACTOR_DEPR_SIMPLE_MSG, DeprecationWarning)
 
         command = self.normalize_cmd(command)
-        log.debug("In disable_paging")
-        log.debug(f"Command: {command}")
+        self.log.debug("In disable_paging")
+        self.log.debug(f"Command: {command}")
         self.write_channel(command)
         # Make sure you read until you detect the command echo (avoid getting out of sync)
         if cmd_verify and self.global_cmd_verify is not False:
@@ -1225,8 +1249,8 @@ A paramiko SSHException occurred during connection creation:
             output = self.read_until_pattern(pattern=pattern, read_timeout=20)
         else:
             output = self.read_until_prompt()
-        log.debug(f"{output}")
-        log.debug("Exiting disable_paging")
+        self.log.debug(f"{output}")
+        self.log.debug("Exiting disable_paging")
         return output
 
     def set_terminal_width(
@@ -1347,6 +1371,16 @@ A paramiko SSHException occurred during connection creation:
                     self.write_channel(self.RETURN)
                     time.sleep(sleep_time)
                     prompt = self.read_channel().strip()
+
+                    autocommand_pattern = "executing autocommand"
+                    if autocommand_pattern in prompt.lower():
+                        time.sleep((delay_factor * 0.1) + 5)
+                        prompt = self.read_channel()
+                    cxr_pattern = "last switch-over"
+                    if cxr_pattern in prompt.lower():
+                        time.sleep((delay_factor * 0.1) + 3)
+                        prompt = self.read_channel()
+
                     if sleep_time <= 3:
                         # Double the sleep_time when it is small
                         sleep_time *= 2
@@ -1360,7 +1394,7 @@ A paramiko SSHException occurred during connection creation:
         self.clear_buffer()
         if not prompt:
             raise ValueError(f"Unable to find prompt: {prompt}")
-        log.debug(f"[find_prompt()]: prompt is {prompt}")
+        self.log.debug(f"[find_prompt()]: prompt is {prompt}")
         return prompt
 
     def clear_buffer(
@@ -1384,7 +1418,7 @@ A paramiko SSHException occurred during connection creation:
             if not data:
                 break
             # Double sleep time each time we detect data
-            log.debug("Clear buffer detects data in the channel")
+            self.log.debug("Clear buffer detects data in the channel")
             if backoff:
                 sleep_time *= 2
                 sleep_time = backoff_max if sleep_time >= backoff_max else sleep_time
@@ -1543,7 +1577,8 @@ A paramiko SSHException occurred during connection creation:
             try:
                 prompt = self.find_prompt()
             except ValueError:
-                prompt = self.base_prompt
+                    log.info("ValueError encountered from find_prompt() is not re-raised")
+                    prompt = self.base_prompt
         else:
             prompt = self.base_prompt
         return re.escape(prompt.strip())
@@ -1661,6 +1696,8 @@ before timing out.\n"""
         if normalize:
             command_string = self.normalize_cmd(command_string)
 
+        log.info("In send_command, cmd:{}, read_timeout:{}".format(command_string, read_timeout))
+
         # Start the clock
         start_time = time.time()
         self.write_channel(command_string)
@@ -1679,7 +1716,7 @@ before timing out.\n"""
         first_line_processed = False
 
         # Keep reading data until search_pattern is found or until read_timeout
-        while time.time() - start_time < read_timeout:
+        while time.time() - start_time < read_timeout and self.is_session_closed() == False:
             if new_data:
                 output += new_data
                 past_n_reads.append(new_data)
@@ -1708,17 +1745,19 @@ before timing out.\n"""
             new_data = self.read_channel()
 
         else:  # nobreak
-            msg = f"""
-Pattern not detected: {repr(search_pattern)} in output.
-
-Things you might try to fix this:
-1. Explicitly set your pattern using the expect_string argument.
-2. Increase the read_timeout to a larger value.
-
-You can also look at the Netmiko session_log or debug log for more information.
-
-"""
-            raise ReadTimeout(msg)
+            if self.is_session_closed():
+                    msg = "Session went down while checking for prompt after sending command. Search pattern: {}".format(
+                        search_pattern)
+                    log.error(msg)
+                    raise SessionDownException(msg)
+            else:
+                msg = f"""
+Pattern not found in output after sending command and waiting for {read_timeout} seconds. 
+Expected Pattern: {repr(search_pattern)}
+Output: {repr(output)}
+You can also look at the Netmiko session_log for more information.
+    """
+                raise PatternNotFoundException(msg)
 
         output = self._sanitize_output(
             output,
@@ -1736,6 +1775,7 @@ You can also look at the Netmiko session_log or debug log for more information.
             textfsm_template=textfsm_template,
             ttp_template=ttp_template,
         )
+        self.log.debug(f"Finish of cmd:{command_string}")
         return return_val
 
     def _send_command_str(self, *args: Any, **kwargs: Any) -> str:
@@ -2034,7 +2074,7 @@ You can also look at the Netmiko session_log or debug log for more information.
                 output += self.read_until_prompt(read_entire_line=True)
             if self.check_config_mode():
                 raise ValueError("Failed to exit configuration mode")
-        log.debug(f"exit_config_mode: {output}")
+        self.log.debug(f"exit_config_mode: {output}")
         return output
 
     def send_config_from_file(
@@ -2196,14 +2236,23 @@ You can also look at the Netmiko session_log or debug log for more information.
 
         else:
             for cmd in config_commands:
-                self.write_channel(self.normalize_cmd(cmd))
+                try:
+                    self.write_channel(self.normalize_cmd(cmd))
 
-                # Make sure command is echoed
-                output += self.read_until_pattern(pattern=re.escape(cmd.strip()))
+                    # Make sure command is echoed
+                    output += self.read_until_pattern(pattern=re.escape(cmd.strip()))
 
-                # Read until next prompt or terminator (#); the .*$ forces read of entire line
-                pattern = f"(?:{re.escape(self.base_prompt)}.*$|{terminator}.*$)"
-                output += self.read_until_pattern(pattern=pattern, re_flags=re.M)
+                    # Read until next prompt or terminator (#); the .*$ forces read of entire line
+                    pattern = f"(?:{re.escape(self.base_prompt)}.*$|{terminator}.*$)"
+                    output += self.read_until_pattern(pattern=pattern, re_flags=re.M)
+                except SessionDownException:
+                    msg = f"Session went down while checking for config prompt after sending command: {cmd}"
+                    log.error(msg)
+                    raise SessionDownException(msg)
+                except PatternNotFoundException:
+                    msg = "Config Prompt not found after sending command: {cmd}"
+                    log.error(msg)
+                    raise PatternNotFoundException(msg)
 
                 if error_pattern:
                     if re.search(error_pattern, output, flags=re.M):
@@ -2213,7 +2262,7 @@ You can also look at the Netmiko session_log or debug log for more information.
         if exit_config_mode:
             output += self.exit_config_mode()
         output = self._sanitize_output(output)
-        log.debug(f"{output}")
+        self.log.debug(f"{output}")
         return output
 
     def strip_ansi_escape_codes(self, string_buffer: str) -> str:

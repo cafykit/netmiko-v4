@@ -34,6 +34,8 @@ from netmiko.cisco import (
     CiscoIosFileTransfer,
     CiscoIosTelnet,
     CiscoIosSerial,
+    CiscoBspSSH,
+    CiscoBspTelnet,
 )
 from netmiko.cisco import CiscoNxosSSH, CiscoNxosFileTransfer
 from netmiko.cisco import CiscoS300SSH, CiscoS300Telnet
@@ -41,6 +43,9 @@ from netmiko.cisco import CiscoTpTcCeSSH
 from netmiko.cisco import CiscoViptelaSSH
 from netmiko.cisco import CiscoWlcSSH
 from netmiko.cisco import CiscoXrSSH, CiscoXrTelnet, CiscoXrFileTransfer
+from netmiko.cisco import CiscoVxrSSH
+from netmiko.cisco import CiscoCloudnativeSSH
+from netmiko.cisco import CiscoCxrHa
 from netmiko.citrix import NetscalerSSH
 from netmiko.cloudgenix import CloudGenixIonSSH
 from netmiko.coriant import CoriantSSH
@@ -170,6 +175,9 @@ CLASS_MAPPER_BASE = {
     "cisco_wlc": CiscoWlcSSH,
     "cisco_xe": CiscoIosSSH,
     "cisco_xr": CiscoXrSSH,
+    "cisco_vxr": CiscoVxrSSH,
+    "cisco_cloudnative": CiscoCloudnativeSSH,
+    "cisco_bsp": CiscoBspSSH,
     "cloudgenix_ion": CloudGenixIonSSH,
     "coriant": CoriantSSH,
     "dell_dnos9": DellForce10SSH,
@@ -260,6 +268,7 @@ FILE_TRANSFER_MAP = {
     "cisco_nxos": CiscoNxosFileTransfer,
     "cisco_xe": CiscoIosFileTransfer,
     "cisco_xr": CiscoXrFileTransfer,
+    "cisco_vxr": CiscoXrFileTransfer,
     "dell_os10": DellOS10FileTransfer,
     "extreme_exos": ExtremeExosFileTransfer,
     "juniper_junos": JuniperFileTransfer,
@@ -298,7 +307,10 @@ CLASS_MAPPER["centec_os_telnet"] = CentecOSTelnet
 CLASS_MAPPER["ciena_saos_telnet"] = CienaSaosTelnet
 CLASS_MAPPER["cisco_ios_telnet"] = CiscoIosTelnet
 CLASS_MAPPER["cisco_xr_telnet"] = CiscoXrTelnet
+CLASS_MAPPER["cisco_xe_telnet"] = CiscoIosTelnet
 CLASS_MAPPER["cisco_s300_telnet"] = CiscoS300Telnet
+CLASS_MAPPER["cisco_cxr_ha_telnet"] = CiscoCxrHa
+CLASS_MAPPER["cisco_bsp_telnet"] = CiscoBspTelnet
 CLASS_MAPPER["dell_dnos6_telnet"] = DellDNOS6Telnet
 CLASS_MAPPER["dell_powerconnect_telnet"] = DellPowerConnectTelnet
 CLASS_MAPPER["dlink_ds_telnet"] = DlinkDSTelnet
