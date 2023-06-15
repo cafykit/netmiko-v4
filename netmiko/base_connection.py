@@ -660,6 +660,7 @@ results={results}
                 if buffer:
                     self._read_buffer += buffer
                 self.log.debug(f"Pattern found: {pattern} in output: {output}")
+                self.log.debug(f"Extra buffer read: {buffer}")
                 return output
             time.sleep(loop_delay)
 
