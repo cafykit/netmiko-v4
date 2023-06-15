@@ -442,7 +442,7 @@ class BaseConnection:
         # Establish the remote connection
         if auto_connect:
             self._open()
-
+             
     def _open(self) -> None:
         """Decouple connection creation from __init__ for mocking."""
         self._modify_connection_params()
@@ -1725,7 +1725,7 @@ before timing out.\n"""
                     raise SessionDownException(msg)
             else:
                 msg = f"""
-Pattern not found in output after sending command and waiting for {read_timeout} seconds. 
+Pattern not found in output after sending command {command_string} and waiting for {read_timeout} seconds. 
 Expected Pattern: {repr(search_pattern)}
 Output: {repr(output)}
 You can also look at the Netmiko session_log for more information.

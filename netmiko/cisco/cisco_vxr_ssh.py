@@ -40,6 +40,15 @@ class CiscoVxrSSH(CiscoXrSSH):
         kwargs["blocking_timeout"] = self.read_timeout
         super().__init__(**kwargs)
 
+    def session_preparation(self) -> None:
+        """Prepare the session after the connection has been established."""
+        # IOS-XR has an issue where it echoes the command even though it hasn't returned the prompt
+        self._test_channel_read(pattern=r"[>#]")
+        cmd = "terminal width 511"
+        self.set_terminal_width(command=cmd, pattern=cmd)
+        self.disable_paging()
+        self.set_base_prompt()
+
     def write_channel(self, out_data):
         """Generic handler that will write to both SSH and telnet channel.
 
