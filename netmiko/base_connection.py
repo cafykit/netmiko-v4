@@ -309,7 +309,10 @@ class BaseConnection:
             if "telnet" not in device_type:
                 self.RETURN = "\n"
             else:
-                self.RETURN = self.TELNET_RETURN
+                if device_type == "cisco_vxr_telnet":
+                    self.RETURN = "\n"
+                else:
+                    self.RETURN = self.TELNET_RETURN
         else:
             self.RETURN = default_enter
 

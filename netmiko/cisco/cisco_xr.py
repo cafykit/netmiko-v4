@@ -380,6 +380,8 @@ class CiscoXrTelnet(CiscoXrBase):
         self.base_prompt = prompt[:-1]
         return self.base_prompt
     
+class CiscoVxrTelnet(CiscoXrTelnet):
+   pass
 
 class CiscoXrFileTransfer(CiscoFileTransfer):
     """Cisco IOS-XR SCP File Transfer driver."""
