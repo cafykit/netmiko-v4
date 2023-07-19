@@ -85,6 +85,63 @@ class CiscoBaseConnection(BaseConnection):
                 max_loops,
             )
 
+
+    def find_prompt_special_case(self, delay_factor: float = 1.0,
+                                  pattern: Optional[str] = None
+        ) -> str:
+        """Finds the current network device prompt, last line only.
+
+        :param delay_factor: See __init__: global_delay_factor
+        :type delay_factor: int
+
+        :param pattern: Regular expression pattern to determine whether prompt is valid
+        """
+        delay_factor = self.select_delay_factor(delay_factor)
+        sleep_time = delay_factor * 0.25
+        self.clear_buffer()
+        self.write_channel(self.RETURN)
+
+        if pattern:
+            try:
+                prompt = self.read_until_pattern(pattern=pattern)
+            except ReadTimeout:
+                pass
+        else:
+            # Initial read
+            time.sleep(sleep_time)
+            prompt = self.read_channel().strip()
+
+            count = 0
+            while count <= 12 and not prompt:
+                if not prompt:
+                    self.write_channel(self.RETURN)
+                    t = 0
+                    while t <= 60:
+                        t = t +15
+                        time.sleep(15)
+                        prompt = self.read_channel().strip()
+                        autocommand_pattern = "executing autocommand"
+                        if autocommand_pattern in prompt.lower():
+                            time.sleep((delay_factor * 0.1) + 5)
+                            prompt = self.read_channel()
+                        cxr_pattern = "last switch-over"
+                        if cxr_pattern in prompt.lower():
+                            time.sleep((delay_factor * 0.1) + 3)
+                            prompt = self.read_channel()
+                        if prompt:
+                            break
+                count += 1
+
+        # If multiple lines in the output take the last line
+        prompt = prompt.split(self.RESPONSE_RETURN)[-1]
+        prompt = prompt.strip()
+        self.clear_buffer()
+        if not prompt:
+            raise ValueError(f"Unable to find prompt: {prompt}")
+        self.log.debug(f"[find_prompt()]: prompt is {prompt}")
+        return prompt
+
+
     def telnet_login(
         self,
         pri_prompt_terminator: str = r"\#\s*$",
@@ -122,7 +179,8 @@ class CiscoBaseConnection(BaseConnection):
                     if output == '':
                         time.sleep(2 * delay_factor)
                         self.log.debug("output is empty, doing find_prompt()")
-                        output = self.find_prompt()
+                        #output = self.find_prompt()
+                        output = self.find_prompt_special_case()
 
                     self.log.debug("Output after doing find_prompt: {}".format(output))
                     return_msg += output
