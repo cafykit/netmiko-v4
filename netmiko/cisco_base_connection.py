@@ -113,23 +113,20 @@ class CiscoBaseConnection(BaseConnection):
 
             count = 0
             while count <= 12 and not prompt:
-                if not prompt:
-                    self.write_channel(self.RETURN)
-                    t = 0
-                    while t <= 60:
-                        t = t +15
-                        time.sleep(15)
-                        prompt = self.read_channel().strip()
-                        autocommand_pattern = "executing autocommand"
-                        if autocommand_pattern in prompt.lower():
-                            time.sleep((delay_factor * 0.1) + 5)
-                            prompt = self.read_channel()
-                        cxr_pattern = "last switch-over"
-                        if cxr_pattern in prompt.lower():
-                            time.sleep((delay_factor * 0.1) + 3)
-                            prompt = self.read_channel()
-                        if prompt:
-                            break
+                self.write_channel(self.RETURN)
+                t = 0
+                while t <= 60 and not prompt:
+                    t = t +15
+                    time.sleep(15)
+                    prompt = self.read_channel().strip()
+                    autocommand_pattern = "executing autocommand"
+                    if autocommand_pattern in prompt.lower():
+                        time.sleep((delay_factor * 0.1) + 5)
+                        prompt = self.read_channel()
+                    cxr_pattern = "last switch-over"
+                    if cxr_pattern in prompt.lower():
+                        time.sleep((delay_factor * 0.1) + 3)
+                        prompt = self.read_channel()
                 count += 1
 
         # If multiple lines in the output take the last line
