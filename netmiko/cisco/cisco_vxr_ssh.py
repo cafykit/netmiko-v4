@@ -201,7 +201,7 @@ class CiscoVxrSSH(CiscoXrSSH):
         return prompt
     
 
-    def send_command(self, command_string, expect_string=None, delay_factor=None, max_loops=None, auto_find_prompt=True,
+    def send_command(self, command_string, expect_string=None, delay_factor=None, max_loops=None, auto_find_prompt=False,
                      strip_prompt=True, strip_command=True, normalize=True, use_textfsm=False, read_timeout=1800, cmd_verify=True):
         """
         Execute command_string on the SSH channel using a pattern-based mechanism. Generally
