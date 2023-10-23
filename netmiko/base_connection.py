@@ -1315,7 +1315,7 @@ A paramiko SSHException occurred during connection creation:
             if pri_prompt_terminator and alt_prompt_terminator:
                 pri_term = re.escape(pri_prompt_terminator)
                 alt_term = re.escape(alt_prompt_terminator)
-                pattern = rf"({pri_term}|{alt_term}|\$)"
+                pattern = rf"({pri_term}|{alt_term})"
             elif pri_prompt_terminator:
                 pattern = re.escape(pri_prompt_terminator)
             elif alt_prompt_terminator:
@@ -1583,7 +1583,7 @@ A paramiko SSHException occurred during connection creation:
         read_timeout: float = 10.0,
         delay_factor: Optional[float] = None,
         max_loops: Optional[int] = None,
-        auto_find_prompt: bool = True,
+        auto_find_prompt: bool = False,
         strip_prompt: bool = True,
         strip_command: bool = True,
         normalize: bool = True,
