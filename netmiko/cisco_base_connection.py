@@ -63,7 +63,7 @@ class CiscoBaseConnection(BaseConnection):
     def serial_login(
         self,
         pri_prompt_terminator: str = r"\#\s*$",
-        alt_prompt_terminator: str = r">\s*$",
+        alt_prompt_terminator: str = r"$\s*$",
         username_pattern: str = r"(?:user:|username|login)",
         pwd_pattern: str = r"assword",
         delay_factor: float = 1.0,
@@ -142,7 +142,7 @@ class CiscoBaseConnection(BaseConnection):
     def telnet_login(
         self,
         pri_prompt_terminator: str = r"\#\s*$",
-        alt_prompt_terminator: str = r"[>\S]\s*$",
+        alt_prompt_terminator: str = r"$\s*$",
         username_pattern: str = r"(?:user:|username|login|user name)",
         pwd_pattern: str = r"assword|ecret",
         delay_factor: float = 1.0,

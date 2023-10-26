@@ -1573,7 +1573,11 @@ A paramiko SSHException occurred during connection creation:
                     prompt = self.base_prompt
         else:
             prompt = self.base_prompt
-        return re.escape(prompt.strip())
+            
+        # lets say prompt = [Image from ramfs ios:~]$
+        # now lets say I ran a cd command, and its now: [Image from ramfs ios:/opt/ltp]$
+        # so the regexp should really be r"\[Image from ramfs ios:[^\]]+\]\$"
+        return r"\[Image from ramfs ios:[^\]]+\]\$"
 
     @select_cmd_verify
     def send_command(
@@ -1583,7 +1587,7 @@ A paramiko SSHException occurred during connection creation:
         read_timeout: float = 10.0,
         delay_factor: Optional[float] = None,
         max_loops: Optional[int] = None,
-        auto_find_prompt: bool = False,
+        auto_find_prompt: bool = True,
         strip_prompt: bool = True,
         strip_command: bool = True,
         normalize: bool = True,
