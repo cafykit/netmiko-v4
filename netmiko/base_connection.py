@@ -189,6 +189,7 @@ class BaseConnection:
         max_read_timeout: Optional[int] = None,
         device_name=None,
         disable_lf_normalization: bool = False,
+        LTP_image = False,
     ) -> None:
         """
         Initialize attributes for establishing connection to target device.
@@ -357,7 +358,8 @@ class BaseConnection:
             self.global_delay_factor = 0.1
         self.session_log = None
         self._session_log_close = False
-        self.device_name = device_name        
+        self.device_name = device_name 
+        self.LTP_image = LTP_image       
 
         # prevent logging secret data
         no_log = {}
@@ -455,7 +457,8 @@ class BaseConnection:
         """Decouple connection creation from __init__ for mocking."""
         self._modify_connection_params()
         self.establish_connection()
-        self._try_session_preparation()
+        if not self.LTP_image:
+            self._try_session_preparation()
 
     def __enter__(self) -> "BaseConnection":
         """Establish a session using a Context Manager."""
@@ -1565,6 +1568,11 @@ A paramiko SSHException occurred during connection creation:
             return (data, False)
 
     def _prompt_handler(self, auto_find_prompt: bool) -> str:
+        if self.LTP_image:
+            # lets say prompt = [Image from ramfs ios:~]$
+            # now lets say I ran a cd command, and its now: [Image from ramfs ios:/opt/ltp]$
+            # so the regexp should really be r"\[Image from ramfs ios:[^\]]+\]\$"
+            return r"\[Image from ramfs ios:[^\]]+\]\$"
         if auto_find_prompt:
             try:
                 prompt = self.find_prompt()
@@ -1572,12 +1580,8 @@ A paramiko SSHException occurred during connection creation:
                     log.info("ValueError encountered from find_prompt() is not re-raised")
                     prompt = self.base_prompt
         else:
-            prompt = self.base_prompt
-            
-        # lets say prompt = [Image from ramfs ios:~]$
-        # now lets say I ran a cd command, and its now: [Image from ramfs ios:/opt/ltp]$
-        # so the regexp should really be r"\[Image from ramfs ios:[^\]]+\]\$"
-        return r"\[Image from ramfs ios:[^\]]+\]\$"
+            prompt = self.base_prompt  
+        return re.escape(prompt.strip())
 
     @select_cmd_verify
     def send_command(

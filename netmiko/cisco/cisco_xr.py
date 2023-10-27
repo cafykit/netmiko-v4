@@ -335,10 +335,10 @@ class CiscoXrTelnet(CiscoXrBase):
         if 'RP Node is not ' in out:
             return
         cmd = "terminal width 511"
-        # self.set_terminal_width(command=cmd, pattern=cmd)
-        # self._test_channel_read(pattern=r"[>#$:]")
-        # self.disable_paging()
-        # self._test_channel_read(pattern=r"[>#$:]")
+        self.set_terminal_width(command=cmd, pattern=cmd)
+        self._test_channel_read(pattern=r"[>#$:]")
+        self.disable_paging()
+        self._test_channel_read(pattern=r"[>#$:]")
         
 
     def set_base_prompt(
