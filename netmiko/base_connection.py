@@ -189,7 +189,7 @@ class BaseConnection:
         max_read_timeout: Optional[int] = None,
         device_name=None,
         disable_lf_normalization: bool = False,
-        LTP_image = False,
+        LTP_image=False,
     ) -> None:
         """
         Initialize attributes for establishing connection to target device.
@@ -359,7 +359,7 @@ class BaseConnection:
         self.session_log = None
         self._session_log_close = False
         self.device_name = device_name 
-        self.LTP_image = LTP_image       
+        self.LTP_image = LTP_image
 
         # prevent logging secret data
         no_log = {}

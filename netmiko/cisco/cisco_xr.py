@@ -336,9 +336,9 @@ class CiscoXrTelnet(CiscoXrBase):
             return
         cmd = "terminal width 511"
         self.set_terminal_width(command=cmd, pattern=cmd)
-        self._test_channel_read(pattern=r"[>#$:]")
+        self._test_channel_read(pattern=r"[>#]")
         self.disable_paging()
-        self._test_channel_read(pattern=r"[>#$:]")
+        self._test_channel_read(pattern=r"[>#]")
         
 
     def set_base_prompt(
@@ -380,7 +380,7 @@ class CiscoXrTelnet(CiscoXrBase):
                 pri_term = re.escape(pri_prompt_terminator)
                 alt_term = re.escape(alt_prompt_terminator)
                 alt_term_2 = re.escape(alt_prompt_terminator_2)
-                pattern = rf"({pri_term}|{alt_term}|{alt_term_2}|\$)"
+                pattern = rf"({pri_term}|{alt_term}|{alt_term_2})"
             elif pri_prompt_terminator:
                 pattern = re.escape(pri_prompt_terminator)
             elif alt_prompt_terminator:
