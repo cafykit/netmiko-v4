@@ -358,7 +358,7 @@ class BaseConnection:
             self.global_delay_factor = 0.1
         self.session_log = None
         self._session_log_close = False
-        self.device_name = device_name 
+        self.device_name = device_name
         self.LTP_image = LTP_image
 
         # prevent logging secret data
@@ -1580,7 +1580,7 @@ A paramiko SSHException occurred during connection creation:
                     log.info("ValueError encountered from find_prompt() is not re-raised")
                     prompt = self.base_prompt
         else:
-            prompt = self.base_prompt  
+            prompt = self.base_prompt
         return re.escape(prompt.strip())
 
     @select_cmd_verify
