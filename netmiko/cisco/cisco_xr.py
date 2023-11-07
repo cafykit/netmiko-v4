@@ -345,7 +345,6 @@ class CiscoXrTelnet(CiscoXrBase):
         self,
         pri_prompt_terminator: str = "#",
         alt_prompt_terminator: str = ">",
-        alt_prompt_terminator_2: str = ":",
         standby_prompt='RP Node is not ',
         delay_factor: float = 1.0,
         pattern: Optional[str] = None,
@@ -376,17 +375,14 @@ class CiscoXrTelnet(CiscoXrBase):
             return self.base_prompt
         
         if pattern is None:
-            if pri_prompt_terminator and alt_prompt_terminator and alt_prompt_terminator_2:
+            if pri_prompt_terminator and alt_prompt_terminator:
                 pri_term = re.escape(pri_prompt_terminator)
                 alt_term = re.escape(alt_prompt_terminator)
-                alt_term_2 = re.escape(alt_prompt_terminator_2)
-                pattern = rf"({pri_term}|{alt_term}|{alt_term_2})"
+                pattern = rf"({pri_term}|{alt_term})"
             elif pri_prompt_terminator:
                 pattern = re.escape(pri_prompt_terminator)
             elif alt_prompt_terminator:
                 pattern = re.escape(alt_prompt_terminator)
-            elif alt_prompt_terminator_2:
-                pattern = re.escape(alt_prompt_terminator_2)
 
         if pattern:
             prompt = self.find_prompt(delay_factor=delay_factor, pattern=pattern)
