@@ -280,7 +280,7 @@ class CiscoBaseConnection(BaseConnection):
                         output = self.read_channel()
                         return_msg += output
                         if re.search(pri_prompt_terminator, output, flags=re.M) or \
-                            re.search(alt_prompt_terminator, output, flags=re.M) and \
+                                re.search(alt_prompt_terminator, output, flags=re.M) and \
                                 not re.search(x86_prompt_pattern, output):
                             return return_msg
 
@@ -332,8 +332,8 @@ class CiscoBaseConnection(BaseConnection):
 
                     # Check if proper data received
                     if re.search(
-                        pri_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator, output, flags=re.M
-                                                                                ) and not is_spitfire:
+                        pri_prompt_terminator, output, flags=re.M
+                    ) or re.search(alt_prompt_terminator, output, flags=re.M) and not is_spitfire:
                         return return_msg
 
                     i += 1
@@ -356,7 +356,7 @@ class CiscoBaseConnection(BaseConnection):
         return_msg += output
         if re.search(pri_prompt_terminator, output, flags=re.M) or re.search(
             alt_prompt_terminator, output, flags=re.M
-            ):
+        ):
             return return_msg
 
         assert self.remote_conn is not None
