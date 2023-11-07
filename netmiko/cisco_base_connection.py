@@ -143,7 +143,6 @@ class CiscoBaseConnection(BaseConnection):
         self,
         pri_prompt_terminator: str = r"\#\s*$",
         alt_prompt_terminator: str = r">\s*$",
-        alt_prompt_terminator_2: str = r"$\s*$",
         username_pattern: str = r"(?:user:|username|login|user name)",
         pwd_pattern: str = r"assword|ecret",
         delay_factor: float = 1.0,
@@ -224,7 +223,7 @@ class CiscoBaseConnection(BaseConnection):
                         time.sleep(1 * delay_factor)
                         output = self.read_channel()
                         return_msg += output
-                        if pri_prompt_terminator in output or alt_prompt_terminator in output or alt_prompt_terminator_2 in output:
+                        if pri_prompt_terminator in output or alt_prompt_terminator in output:
                             return return_msg
 
                     # If previously from xr prompt, XR not started, must restart XR
@@ -280,7 +279,7 @@ class CiscoBaseConnection(BaseConnection):
                         time.sleep(0.5 * delay_factor)
                         output = self.read_channel()
                         return_msg += output
-                        if re.search(pri_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator_2, output, flags=re.M) and \
+                        if re.search(pri_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator, output, flags=re.M) and \
                                 not re.search(x86_prompt_pattern, output):
                             return return_msg
 
@@ -332,7 +331,7 @@ class CiscoBaseConnection(BaseConnection):
 
                     # Check if proper data received
                     if re.search(
-                        pri_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator_2, output, flags=re.M) and not is_spitfire:
+                        pri_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator, output, flags=re.M) and not is_spitfire:
                         return return_msg
 
                     i += 1
@@ -353,7 +352,7 @@ class CiscoBaseConnection(BaseConnection):
         time.sleep(0.5 * delay_factor)
         output = self.read_channel()
         return_msg += output
-        if re.search(pri_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator_2, output, flags=re.M):
+        if re.search(pri_prompt_terminator, output, flags=re.M) or re.search(alt_prompt_terminator, output, flags=re.M):
             return return_msg
 
         assert self.remote_conn is not None

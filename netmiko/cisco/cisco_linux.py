@@ -11,7 +11,12 @@ class CiscoLinuxTelnet(CiscoBaseConnection):
     Adds support for characters like $, :
     Also has a custom base prompt for LTP images.
     """
-    pass
+
+    def _prompt_handler(self, auto_find_prompt: bool) -> str:
+        # lets say prompt = [Image from ramfs ios:~]$
+        # now lets say I ran a cd command, and its now: [Image from ramfs ios:/opt/ltp]$
+        # so the regexp should really be r"\[Image from ramfs ios:[^\]]+\]\$"
+        return r"\[Image from ramfs ios:[^\]]+\]\$"
     
     def session_preparation(self):
         """Prepare the session after the connection has been established."""
@@ -21,9 +26,7 @@ class CiscoLinuxTelnet(CiscoBaseConnection):
             return
         cmd = "terminal width 511"
         self.set_terminal_width(command=cmd, pattern=cmd)
-        self._test_channel_read(pattern=r"[>#$:]")
-        self.disable_paging()
-        self._test_channel_read(pattern=r"[>#$:]")
+
         
     def telnet_login(
         self,

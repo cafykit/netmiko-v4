@@ -336,9 +336,9 @@ class CiscoXrTelnet(CiscoXrBase):
             return
         cmd = "terminal width 511"
         self.set_terminal_width(command=cmd, pattern=cmd)
-        self._test_channel_read(pattern=r"[>#$:]")
+        self._test_channel_read(pattern=r"[>#]")
         self.disable_paging()
-        self._test_channel_read(pattern=r"[>#$:]")
+        self._test_channel_read(pattern=r"[>#]")
         
 
     def set_base_prompt(
@@ -389,7 +389,7 @@ class CiscoXrTelnet(CiscoXrBase):
         else:
             prompt = self.find_prompt(delay_factor=delay_factor)
 
-        if not prompt[-1] in (pri_prompt_terminator, alt_prompt_terminator, standby_prompt, alt_prompt_terminator_2):
+        if not prompt[-1] in (pri_prompt_terminator, alt_prompt_terminator, standby_prompt):
             raise PromptNotFoundException(f"Router prompt not found: {repr(prompt)}")
         # Strip off trailing terminator
         self.base_prompt = prompt[:-1]
