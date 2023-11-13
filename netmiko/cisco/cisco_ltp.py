@@ -5,7 +5,7 @@ import time
 from netmiko.exceptions import NetmikoAuthenticationException
 from netmiko.cafy_custom_exceptions import PromptNotFoundException
 
-class CiscoLinuxTelnet(CiscoBaseConnection):
+class CiscoLTPTelnet(CiscoBaseConnection):
     """
     Cisco telnet driver for images that put you directly into a linux shell, no XR prompt. For example, LTP testing.
     Adds support for characters like $, :
