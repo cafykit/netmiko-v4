@@ -189,6 +189,7 @@ class BaseConnection:
         max_read_timeout: Optional[int] = None,
         device_name=None,
         disable_lf_normalization: bool = False,
+        ltp_image=False,
     ) -> None:
         """
         Initialize attributes for establishing connection to target device.
@@ -357,7 +358,7 @@ class BaseConnection:
             self.global_delay_factor = 0.1
         self.session_log = None
         self._session_log_close = False
-        self.device_name = device_name        
+        self.device_name = device_name
 
         # prevent logging secret data
         no_log = {}
@@ -455,7 +456,6 @@ class BaseConnection:
         """Decouple connection creation from __init__ for mocking."""
         self._modify_connection_params()
         self.establish_connection()
-        self._try_session_preparation()
 
     def __enter__(self) -> "BaseConnection":
         """Establish a session using a Context Manager."""
@@ -1572,7 +1572,7 @@ A paramiko SSHException occurred during connection creation:
                     log.info("ValueError encountered from find_prompt() is not re-raised")
                     prompt = self.base_prompt
         else:
-            prompt = self.base_prompt
+            prompt = self.base_prompt  
         return re.escape(prompt.strip())
 
     @select_cmd_verify

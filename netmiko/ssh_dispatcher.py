@@ -34,7 +34,7 @@ from netmiko.cisco import CiscoS300SSH, CiscoS300Telnet
 from netmiko.cisco import CiscoTpTcCeSSH
 from netmiko.cisco import CiscoViptelaSSH
 from netmiko.cisco import CiscoWlcSSH
-from netmiko.cisco import CiscoXrSSH, CiscoXrTelnet, CiscoXrFileTransfer
+from netmiko.cisco import CiscoXrSSH, CiscoXrTelnet, CiscoXrFileTransfer, CiscoLTPTelnet
 from netmiko.cisco import CiscoVxrSSH, CiscoVxrTelnet
 from netmiko.cisco import CiscoCloudnativeSSH
 from netmiko.cisco import CiscoCxrHa
@@ -286,6 +286,7 @@ CLASS_MAPPER["centec_os_telnet"] = CentecOSTelnet
 CLASS_MAPPER["ciena_saos_telnet"] = CienaSaosTelnet
 CLASS_MAPPER["cisco_ios_telnet"] = CiscoIosTelnet
 CLASS_MAPPER["cisco_xr_telnet"] = CiscoXrTelnet
+CLASS_MAPPER["cisco_ltp_telnet"] = CiscoLTPTelnet
 CLASS_MAPPER["cisco_xe_telnet"] = CiscoIosTelnet
 CLASS_MAPPER["cisco_vxr_telnet"] = CiscoVxrTelnet
 CLASS_MAPPER["cisco_s300_telnet"] = CiscoS300Telnet
