@@ -18,7 +18,6 @@ from netmiko.cisco.cisco_viptela import CiscoViptelaSSH
 from netmiko.cisco.cisco_cloudnative import CiscoCloudnativeSSH, CiscoCloudnativeTelnet
 from netmiko.cisco.cisco_bsp import CiscoBspSSH, CiscoBspTelnet
 from netmiko.cisco.cisco_vxr_ssh import CiscoVxrSSH
-from netmiko.cisco.cisco_ltp import CiscoLTPTelnet
 
 __all__ = [
     "CiscoIosSSH",
@@ -28,7 +27,6 @@ __all__ = [
     "CiscoNxosSSH",
     "CiscoXrSSH",
     "CiscoXrTelnet",
-    "CiscoLTPTelnet",
     "CiscoWlcSSH",
     "CiscoS300SSH",
     "CiscoS300Telnet",
