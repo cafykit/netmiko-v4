@@ -456,6 +456,7 @@ class BaseConnection:
         """Decouple connection creation from __init__ for mocking."""
         self._modify_connection_params()
         self.establish_connection()
+        self._try_session_preparation()
 
     def __enter__(self) -> "BaseConnection":
         """Establish a session using a Context Manager."""
