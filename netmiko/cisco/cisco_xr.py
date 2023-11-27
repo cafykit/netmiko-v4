@@ -251,6 +251,21 @@ class CiscoXrBase(CiscoBaseConnection):
         output = output.replace("(admin)", "")
         return check_string in output
 
+    def config_mode(
+        self,
+        config_command: str = "config terminal",
+        pattern: str = "",
+        re_flags: int = 0,
+    ) -> str:
+        if not pattern:
+            # Make sure the *entire* config prompt is read.
+            pattern = re.escape(self.base_prompt[:16])
+            check_string = re.escape(")#")
+            pattern = f"{pattern}.*{check_string}"
+        return super().config_mode(
+            config_command=config_command, pattern=pattern, re_flags=re_flags
+        )
+
     def exit_config_mode(self, exit_config: str = "end", pattern: str = "", skip_check=False) -> str:
         """Exit configuration mode."""
         output = ""
