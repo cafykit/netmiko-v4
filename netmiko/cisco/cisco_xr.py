@@ -24,6 +24,21 @@ class CiscoXrBase(CiscoBaseConnection):
         self._test_channel_read(pattern=r"[>#]")
         self.set_base_prompt()
 
+    def config_mode(
+        self,
+        config_command: str = "config terminal",
+        pattern: str = "",
+        re_flags: int = 0,
+    ) -> str:
+        if not pattern:
+            # Make sure the *entire* config prompt is read.
+            pattern = re.escape(self.base_prompt)
+            check_string = re.escape(")#")
+            pattern = f"{pattern}.*{check_string}"
+        return super().config_mode(
+            config_command=config_command, pattern=pattern, re_flags=re_flags
+        )
+
     def send_config_set(
         self,
         config_commands: Union[str, Sequence[str], TextIO, None] = None,
