@@ -1,6 +1,5 @@
 from __future__ import print_function
 from __future__ import unicode_literals
-from logger.cafylog import CafyLog
 from netmiko.cisco_base_connection import CiscoBaseConnection
 from netmiko.exceptions import NetMikoAuthenticationException
 from netmiko.utilities import calc_old_timeout
@@ -8,9 +7,9 @@ from typing import Optional
 import re
 import time
 import warnings
+import logging
 
-log = CafyLog()
-
+log = logging.getLogger('netmiko')
 
 class CiscoBsp(CiscoBaseConnection):
     """
