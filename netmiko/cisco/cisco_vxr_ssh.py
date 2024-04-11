@@ -36,7 +36,7 @@ class CiscoVxrSSH(CiscoXrSSH):
         """Constructor
         """
         # 30 minutes
-        self.read_timeout = kwargs.get('read_timeout', 30)
+        self.read_timeout = kwargs.get('read_timeout', 1800)
         kwargs["blocking_timeout"] = self.read_timeout
         super().__init__(**kwargs)
 
