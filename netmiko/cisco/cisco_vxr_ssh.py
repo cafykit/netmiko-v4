@@ -36,7 +36,7 @@ class CiscoVxrSSH(CiscoXrSSH):
         """Constructor
         """
         # 30 minutes
-        self.read_timeout = kwargs.get('read_timeout', 1800)
+        self.read_timeout = kwargs.get('read_timeout', 30)
         kwargs["blocking_timeout"] = self.read_timeout
         super().__init__(**kwargs)
 
@@ -436,7 +436,11 @@ class CiscoVxrSSH(CiscoXrSSH):
             for command in commands:
                 self.write_channel(self.normalize_cmd(command))
                 try:
-                    output += self.read_until_pattern(pattern=r'\)#$')
+                    if self.base_prompt.startswith("sysadmin-vm:"):
+                        self.log.info("Performing config in admin mode")
+                        output += self.read_until_pattern(pattern=r'\)#\s$')
+                    else:
+                        output += self.read_until_pattern(pattern=r'\)#$')
                 except SessionDownException:
                     msg = "Session went down while checking for config prompt after sending command: {}".format(command)
                     self.log.error(msg)
@@ -543,7 +547,10 @@ class CiscoVxrSSH(CiscoXrSSH):
                 msg = "Prompt not found after sending commit replace command"
                 self.log.error(msg)
                 raise PatternNotFoundException(msg)
-            expect_string = r'\)#$' + "|" + alt_error_marker
+            if self.base_prompt.startswith("sysadmin-vm:"):
+                expect_string = r'\)#\s$' + "|" + alt_error_marker 
+            else:
+                expect_string = r'\)#$' + "|" + alt_error_marker
             try:
                 output += self.send_command_expect("yes", strip_prompt=False, strip_command=False,
                                                    expect_string=expect_string)
@@ -556,7 +563,10 @@ class CiscoVxrSSH(CiscoXrSSH):
                 self.log.error(msg)
                 raise PatternNotFoundException(msg)
         else:
-            expect_string = r'\)#$' + "|" + alt_error_marker
+            if self.base_prompt.startswith("sysadmin-vm:"):
+                expect_string = r'\)#\s$' + "|" + alt_error_marker
+            else:
+                expect_string = r'\)#$' + "|" + alt_error_marker
             try:
                 output += self.send_command_expect(command_string, strip_prompt=False, strip_command=False,
                                                    expect_string=expect_string)
@@ -570,13 +580,17 @@ class CiscoVxrSSH(CiscoXrSSH):
                 raise PatternNotFoundException(msg)
 
         if alt_error_marker in output:
+            if self.base_prompt.startswith("sysadmin-vm:"):
+                expect_string = r'\)#\s$' 
+            else:
+                expect_string = r'\)#$' 
             if commit_error_dialog_dict is not None and alt_error_marker in commit_error_dialog_dict:
                 marker_value = commit_error_dialog_dict[alt_error_marker]
                 self.write_channel(self.normalize_cmd(marker_value))
-                output += self.read_until_pattern(pattern=r'\)#$')
+                output += self.read_until_pattern(pattern=expect_string)
             else:
                 self.write_channel(self.normalize_cmd("no"))
-                output += self.read_until_pattern(pattern=r'\)#$')
+                output += self.read_until_pattern(pattern=expect_string)
                 raise ConfigCommitError(
                     "Commit failed as one or more commits have occurred from other configuration sessions:\n{0}".format(output))
         if error_marker in output:
@@ -591,7 +605,10 @@ class CiscoVxrSSH(CiscoXrSSH):
         if skip_check or self.check_config_mode():
             self.write_channel(self.normalize_cmd(exit_config))
             try:
-                output += self.read_until_pattern(pattern=r"(Uncommitted|#$)")
+                if self.base_prompt.startswith("sysadmin-vm:"):
+                    output += self.read_until_pattern(pattern=r"(Uncommitted|#\s$)")
+                else:
+                    output += self.read_until_pattern(pattern=r"(Uncommitted|#$)")
             except SessionDownException:
                 msg = "Session went down while checking prompt after sending config mode exit command: {}".format(
                     exit_config)
