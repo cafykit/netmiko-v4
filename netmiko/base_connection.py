@@ -565,7 +565,7 @@ class BaseConnection:
                 result = self.remote_conn.transport.is_active()
                 assert isinstance(result, bool)
                 return result
-            except (socket.error, EOFError):
+            except (socket.error, EOFError, SessionDownException):
                 log.error("Unable to send", exc_info=True)
                 # If unable to send, we can tell for sure that the connection is unusable
                 return False
