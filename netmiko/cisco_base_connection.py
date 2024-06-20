@@ -123,6 +123,9 @@ class CiscoBaseConnection(BaseConnection):
                     if cxr_pattern in prompt.lower():
                         time.sleep((delay_factor * 0.1) + 3)
                         prompt = self.read_channel()
+                    if count == 5 and not prompt:
+                        self.log.info("Probably in telnet hung state. Passing ctrl-q . Potential DDTS: CSCwh67759 and CSCvy64395")
+                        self.write_channel('\x11')
                 count += 1
 
         # If multiple lines in the output take the last line
