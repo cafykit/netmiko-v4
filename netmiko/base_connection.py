@@ -1092,13 +1092,7 @@ Device settings: {self.device_type} {self.host}:{self.port}
                 ping_success = False
                 ping_output = "Ping check not performed."
                 try:
-                    # Determine platform and construct ping command
-                    os_type = platform.system().lower()
-                    if os_type == "windows":
-                        ping_cmd = ["ping", "-n", "4", self.host]
-                    else:
-                        ping_cmd = ["ping", "-c", "4", self.host]
-                    
+                    ping_cmd = ["ping", "-c", "4", self.host]
                     # Execute ping command
                     result = subprocess.run(
                         ping_cmd,
