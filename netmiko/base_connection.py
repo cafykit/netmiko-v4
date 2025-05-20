@@ -28,6 +28,7 @@ import re
 import socket
 import telnetlib
 import time
+import subprocess
 from collections import deque
 from os import path
 from threading import Lock
@@ -1087,17 +1088,47 @@ Device settings: {self.device_type} {self.host}:{self.port}
                 raise NetmikoTimeoutException(msg)
             except paramiko.ssh_exception.AuthenticationException as auth_err:
                 self.paramiko_cleanup()
+                # Perform ping check to verify device reachability
+                ping_success = False
+                ping_output = "Ping check not performed."
+                try:
+                    # Determine platform and construct ping command
+                    os_type = platform.system().lower()
+                    if os_type == "windows":
+                        ping_cmd = ["ping", "-n", "4", self.host]
+                    else:
+                        ping_cmd = ["ping", "-c", "4", self.host]
+                    
+                    # Execute ping command
+                    result = subprocess.run(
+                        ping_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        timeout=10
+                    )
+                    ping_output = result.stdout + result.stderr
+                    ping_success = result.returncode == 0
+                except (subprocess.SubprocessError, OSError) as ping_err:
+                    ping_output = f"Ping check failed: {str(ping_err)}"
+                
+                # Construct error message with ping results
                 msg = f"""Authentication to device failed.
 
 Common causes of this problem are:
 1. Invalid username and password
 2. Incorrect SSH-key file
 3. Connecting to the wrong device
+4. Device may be unreachable (Ping {'successful' if ping_success else 'failed'})
 
 Device settings: {self.device_type} {self.host}:{self.port}
 
-"""
+Ping output:
+{ping_output}
 
+Authentication error details:
+{str(auth_err)}
+"""
                 msg += self.RETURN + str(auth_err)
                 raise NetmikoAuthenticationException(msg)
             except paramiko.ssh_exception.SSHException as e:
