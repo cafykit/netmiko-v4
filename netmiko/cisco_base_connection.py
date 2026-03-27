@@ -164,7 +164,6 @@ class CiscoBaseConnection(BaseConnection):
                 try:
                     self.log.debug("Reading channel for the first time")
                     output = self.read_channel()
-
                     # This below if block is addeed because when the telnet console starts with UserName,
                     # self.read_channel which internally calls telnetlib.read_ver_eager() returns empty string
                     # So, assign it to self.find_prompt()
@@ -179,6 +178,16 @@ class CiscoBaseConnection(BaseConnection):
                     return_msg += output
 
                     # is at spitfire xr prompt
+
+                    if re.search('RP/\d+/RP\d+/CPU\d+:\S*\)#$', output):
+                        # To check if it is in the config prompt
+                        # If yes, then write newline char, "clear" and "end" to clear any stale configs
+                        self.write_channel(self.TELNET_RETURN + "clear" + self.TELNET_RETURN)
+                        self.read_channel()
+                        self.write_channel("end" + self.TELNET_RETURN)
+                        output = self.find_prompt()
+                        return_msg += output
+
                     if re.search('RP/\d+/RP\d+/CPU\d+:\S*#$', output):
                         return return_msg
 
